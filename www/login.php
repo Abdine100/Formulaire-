@@ -29,19 +29,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
             
             if ($user && verifyPasswordBcrypt($password, $user['password'])) {
-                // Connexion réussie
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_nom'] = $user['nom'];
-                $_SESSION['user_prenom'] = $user['prenom'];
-                $_SESSION['user_email'] = $user['email'];
-                
-                // Mettre à jour la dernière connexion
-                $stmt = $pdo->prepare('UPDATE utilisateurs SET derniere_connexion = NOW() WHERE id = ?');
-                $stmt->execute([$user['id']]);
-                
-                // Redirection vers le dashboard
-                header('Location: dashboard.php');
-                exit;
+
+                // Vérifier si le compte est désactivé (actif != NULL)
+                if ($user['actif'] !== null) {
+                    $date = date('d/m/Y à H:i', strtotime($user['actif']));
+                    $error = "Votre compte a été désactivé le $date. Veuillez contacter l'administrateur.";
+                } else {
+                    // Connexion réussie
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['user_nom'] = $user['nom'];
+                    $_SESSION['user_prenom'] = $user['prenom'];
+                    $_SESSION['user_email'] = $user['email'];
+                    
+                    // Mettre à jour la dernière connexion
+                    $stmt = $pdo->prepare('UPDATE utilisateurs SET derniere_connexion = NOW() WHERE id = ?');
+                    $stmt->execute([$user['id']]);
+                    
+                    // Redirection vers le dashboard
+                    header('Location: dashboard.php');
+                    exit;
+                }
+
             } else {
                 $error = 'Email ou mot de passe incorrect.';
             }
@@ -256,6 +264,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             content: '⚠';
             font-size: 20px;
         }
+
+        .alert-disabled {
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+            color: #9a3412;
+            border: 2px solid #fed7aa;
+        }
+
+        .alert-disabled::before {
+            content: '🚫';
+            font-size: 20px;
+        }
         
         .links {
             margin-top: 30px;
@@ -290,7 +309,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         
         <?php if ($error): ?>
-            <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
+            <?php
+            // Choisir le style d'alerte selon le type d'erreur
+            $alertClass = str_contains($error, 'désactivé') ? 'alert-disabled' : 'alert-error';
+            ?>
+            <div class="alert <?= $alertClass ?>"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         
         <form method="POST" action="">
