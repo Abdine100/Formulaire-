@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($result) {
                     $success = 'Inscription réussie ! Vous pouvez maintenant vous connecter.';
                     // Redirection vers la page de connexion après 2 secondes
-                    header("Refresh: 2; url=connexion.php");
+                    header("Refresh: 2; url=login.php");
                 }
             }
         } catch (PDOException $e) {

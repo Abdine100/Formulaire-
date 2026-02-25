@@ -52,6 +52,7 @@ function initDatabase($pdo) {
             ville VARCHAR(100) NOT NULL,
             pays VARCHAR(100) NOT NULL,
             genre ENUM('homme', 'femme', 'autre') DEFAULT NULL,
+            actif TINYINT(1) NOT NULL DEFAULT 1,
             date_inscription DATETIME NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
