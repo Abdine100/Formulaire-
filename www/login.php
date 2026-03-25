@@ -4,9 +4,13 @@ require_once 'config.php';
 
 $error = '';
 
-// Si déjà connecté, rediriger vers le dashboard
+// Si déjà connecté, rediriger selon le rôle
 if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard.php');
+    if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
+        header('Location: admin.php');
+    } else {
+        header('Location: dashboard.php');
+    }
     exit;
 }
 
@@ -23,30 +27,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo = getDB();
             
-            // Rechercher l'utilisateur par email
             $stmt = $pdo->prepare('SELECT * FROM utilisateurs WHERE email = ?');
             $stmt->execute([$email]);
             $user = $stmt->fetch();
             
             if ($user && verifyPasswordBcrypt($password, $user['password'])) {
 
-                // Vérifier si le compte est désactivé (actif != NULL)
                 if ($user['actif'] !== null) {
                     $date = date('d/m/Y à H:i', strtotime($user['actif']));
                     $error = "Votre compte a été désactivé le $date. Veuillez contacter l'administrateur.";
                 } else {
                     // Connexion réussie
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['user_nom'] = $user['nom'];
+                    $_SESSION['user_id']     = $user['id'];
+                    $_SESSION['user_nom']    = $user['nom'];
                     $_SESSION['user_prenom'] = $user['prenom'];
-                    $_SESSION['user_email'] = $user['email'];
+                    $_SESSION['user_email']  = $user['email'];
+                    $_SESSION['user_role']   = $user['role'];
                     
                     // Mettre à jour la dernière connexion
                     $stmt = $pdo->prepare('UPDATE utilisateurs SET derniere_connexion = NOW() WHERE id = ?');
                     $stmt->execute([$user['id']]);
                     
-                    // Redirection vers le dashboard
-                    header('Location: dashboard.php');
+                    // Redirection selon le rôle
+                    if ($user['role'] === 'admin') {
+                        header('Location: admin.php');
+                    } else {
+                        header('Location: dashboard.php');
+                    }
                     exit;
                 }
 
@@ -67,15 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Connexion</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -85,216 +86,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: relative;
             overflow: hidden;
         }
-        
         body::before {
             content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
             pointer-events: none;
         }
-        
         .login-container {
-            background: rgba(255, 255, 255, 0.98);
+            background: rgba(255,255,255,0.98);
             backdrop-filter: blur(10px);
             padding: 45px 40px;
             border-radius: 20px;
-            box-shadow: 
-                0 20px 60px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-            width: 100%;
-            max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+            width: 100%; max-width: 450px;
             animation: fadeInUp 0.6s ease-out;
         }
-        
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-        
-        .header-section {
-            text-align: center;
-            margin-bottom: 35px;
-        }
-        
+        .header-section { text-align: center; margin-bottom: 35px; }
         .logo {
-            width: 60px;
-            height: 60px;
+            width: 60px; height: 60px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-flex; align-items: center; justify-content: center;
             margin-bottom: 20px;
-            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 16px rgba(102,126,234,0.4);
         }
-        
-        .logo svg {
-            width: 32px;
-            height: 32px;
-            fill: white;
+        .logo svg { width: 32px; height: 32px; fill: white; }
+        h2 { color: #1a1a2e; margin-bottom: 8px; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+        .subtitle { color: #6b7280; font-size: 15px; }
+        .form-group { margin-bottom: 24px; }
+        label { display: block; margin-bottom: 10px; color: #374151; font-weight: 500; font-size: 14px; }
+        input[type="email"], input[type="password"] {
+            width: 100%; padding: 14px 16px;
+            border: 2px solid #e5e7eb; border-radius: 12px;
+            font-size: 15px; transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif; background: #ffffff;
         }
-        
-        h2 {
-            color: #1a1a2e;
-            margin-bottom: 8px;
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+        input:focus {
+            outline: none; border-color: #667eea;
+            background: #f9fafb; box-shadow: 0 0 0 4px rgba(102,126,234,0.1);
         }
-        
-        .subtitle {
-            color: #6b7280;
-            font-size: 15px;
-        }
-        
-        .form-group {
-            margin-bottom: 24px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 10px;
-            color: #374151;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 15px;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-            background: #ffffff;
-        }
-        
-        input[type="email"]:focus,
-        input[type="password"]:focus {
-            outline: none;
-            border-color: #667eea;
-            background: #f9fafb;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        }
-        
-        .forgot-password {
-            text-align: right;
-            margin-top: 8px;
-        }
-        
-        .forgot-password a {
-            color: #667eea;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        .forgot-password a:hover {
-            text-decoration: underline;
-        }
-        
+        .forgot-password { text-align: right; margin-top: 8px; }
+        .forgot-password a { color: #667eea; text-decoration: none; font-size: 14px; font-weight: 500; }
+        .forgot-password a:hover { text-decoration: underline; }
         button {
-            width: 100%;
-            padding: 16px;
+            width: 100%; padding: 16px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s ease; margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
         }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,0.5); }
+        button:active { transform: translateY(0); }
         .alert {
-            padding: 14px 18px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            font-weight: 500;
+            padding: 14px 18px; border-radius: 10px; margin-bottom: 25px;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 14px; font-weight: 500;
             animation: slideDown 0.4s ease-out;
         }
-        
         @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-        
         .alert-error {
-            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            color: #991b1b;
-            border: 2px solid #fecaca;
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            color: #991b1b; border: 2px solid #fecaca;
         }
-        
-        .alert-error::before {
-            content: '⚠';
-            font-size: 20px;
-        }
-
+        .alert-error::before { content: '⚠'; font-size: 20px; }
         .alert-disabled {
-            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-            color: #9a3412;
-            border: 2px solid #fed7aa;
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            color: #9a3412; border: 2px solid #fed7aa;
         }
-
-        .alert-disabled::before {
-            content: '🚫';
-            font-size: 20px;
-        }
-        
+        .alert-disabled::before { content: '🚫'; font-size: 20px; }
         .links {
-            margin-top: 30px;
-            text-align: center;
-            padding-top: 30px;
-            border-top: 1px solid #e5e7eb;
-            color: #6b7280;
-            font-size: 15px;
+            margin-top: 30px; text-align: center;
+            padding-top: 30px; border-top: 1px solid #e5e7eb;
+            color: #6b7280; font-size: 15px;
         }
-        
-        .links a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .links a:hover {
-            color: #764ba2;
-            text-decoration: underline;
-        }
+        .links a { color: #667eea; text-decoration: none; font-weight: 600; }
+        .links a:hover { color: #764ba2; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -305,14 +180,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                 </svg>
             </div>
+            <h2>Connexion</h2>
             <p class="subtitle">Connectez-vous à votre compte</p>
         </div>
         
         <?php if ($error): ?>
-            <?php
-            // Choisir le style d'alerte selon le type d'erreur
-            $alertClass = str_contains($error, 'désactivé') ? 'alert-disabled' : 'alert-error';
-            ?>
+            <?php $alertClass = str_contains($error, 'désactivé') ? 'alert-disabled' : 'alert-error'; ?>
             <div class="alert <?= $alertClass ?>"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         
@@ -321,7 +194,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="email">Adresse email</label>
                 <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required autofocus>
             </div>
-            
             <div class="form-group">
                 <label for="password">Mot de passe</label>
                 <input type="password" id="password" name="password" required>
@@ -329,7 +201,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="mot-de-passe-oublie.php">Mot de passe oublié ?</a>
                 </div>
             </div>
-            
             <button type="submit">Se connecter</button>
         </form>
         
