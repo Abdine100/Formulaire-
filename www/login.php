@@ -4,7 +4,7 @@ require_once 'config.php';
 
 $error = '';
 
-// Si déjà connecté, rediriger selon le rôle
+// Si déjà connecté, rediriger selon le rôle( admin ou utilisateur )
 if (isset($_SESSION['user_id'])) {
     if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
         header('Location: admin.php');
@@ -14,7 +14,7 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Traitement du formulaire de connexion
+// Traitement du formulaire de connexion 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'] ?? '';
