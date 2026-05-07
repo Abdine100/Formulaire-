@@ -130,7 +130,7 @@ function uploadImage($file) {
     return $filename;
 }
 
-// ── MOT DE PASSE ─────────────────────────────────────────────────────────────
+// ── MOT DE PASSE avec Bcrypt ─────────────────────────────────────────────────────────────
 function hashPasswordBcrypt($password) {
     return password_hash($password, PASSWORD_BCRYPT, ['cost' => BCRYPT_COST]);
 }
